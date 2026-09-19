@@ -1,4 +1,4 @@
-#Cadastro de tipos de ativos (imutáveis) 
+#Step1: Cadastro de tipos de ativos (imutáveis) 
 
 #Do módulo enum, traga a ferramenta Enum
 from enum import Enum 
@@ -18,7 +18,7 @@ STATUSES = ('open', 'in_progress', 'fixed', 'risk_accepted')
 assets = {}
 
 
-#Leitura com tratamento de erros
+#Step2: Leitura com tratamento de erros
 
 #Defina uma função que recebe uma mensagem para exibir
 def read_text(message):
@@ -39,4 +39,26 @@ def read_int(message):
         except ValueError:  # Captura o erro de conversão
             print(" Error: please type an integer number.")
 
+
+
+#Step3: Crie o menu principal, que será exibido para o usuário
+#defina a função main, que recebe infos do usuário
+def main():
+# load_data()  # Uncommet in step 4
+#Enquanto o usuário não digitar um valor válido, continue pedindo a entrada
+    while True:
+        print("\n===== IT ASSET MANAGER =====") #pula uma linha e exibe o título do menu
+        print("1 - Register Asset")
+        print("0 - Exit")
+#pergunte qual opção o usuário deseja escolher e remova espaços em branco
+        option = input("Choose an option: ").strip()  # Remove espaços em branco
+        if option == "1":
+            print("Not implemented yet.")  # Becomes create_asset() in step 4
+        elif option == "0":
+            break  # Sai do loop e encerra o programa
+        else:
+            print("Invalid option. Please choose a valid option.")
+
+if __name__ == "__main__":
+    main()  # Executa a função principal se o script for executado diretamente
 
