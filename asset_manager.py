@@ -40,11 +40,53 @@ def read_int(message):
             print(" Error: please type an integer number.")
 
 
+#Step4: Arquivos: load_data() e save_data()
+
+#Defina a função load_data, que lê os dados do arquivo e os carrega no dicionário assets
+ASSETS_FILE = "assets.txt"  # Nome do arquivo que contém os ativos
+VULNS_FILE = "vulnerabilities.txt"  # Nome do arquivo que contém as vulnerabilidades
+SEPARADOR = ";"  # Separador usado nos arquivos
+
+def load_data():
+    """Read the text file and fills the assets dictionary"""
+    try: 
+        with open(ASSETS_FILE, "r", encoding="utf-8") as file:  # Abre o arquivo de ativos para leitura
+            for line in file:  # Itera sobre cada linha do arquivo
+                line = line.strip()
+                if line == "":  # Ignora linhas vazias
+                    continue
+                asset_id, name, owner, location, type_code, description = line.split(SEPARADOR)  # Divide a linha em partes usando o separador
+                assets[int(asset_id)] = {  # Adiciona o ativo ao dicionário assets
+                    "id": int(asset_id),
+                    "name": name,
+                    "owner": owner,
+                    "location": location,
+                    "type": AssetType(int(type_code)),  # Converte o código do tipo para AssetType
+                    "description": description,
+                    "vulnerabilities": []  # Inicializa a lista de vulnerabilidades como vazia
+                }
+    except FileNotFoundError:
+        pass  # Se o arquivo não existir, apenas ignore o erro e continue
+
+def save_data():
+    """Rewrites the text file with the current content of the dictionary"""
+    with open(ASSETS_FILE, "w", encoding="utf-8") as file:  # Abre o arquivo de ativos para escrita
+        for asset in assets.values():  # Itera sobre os valores do dicionário assets
+            fields = [str(asset["id"]), asset["name"], asset["owner"], asset["location"], str(asset["type"].value), asset["description"]]  # Cria uma lista com os campos do ativo
+            file.write(SEPARADOR.join(fields) + "\n")  # Escreve os campos no arquivo, separados pelo separador e adiciona uma nova linha
+
+# --- temporary test, delete before the commit ---
+load_data()
+print(assets)          # the asset read from the file
+save_data()            # rewrites the file with the same content
+
+
 
 #Step3: Crie o menu principal, que será exibido para o usuário
+
 #defina a função main, que recebe infos do usuário
 def main():
-# load_data()  # Uncommet in step 4
+    load_data() 
 #Enquanto o usuário não digitar um valor válido, continue pedindo a entrada
     while True:
         print("\n===== IT ASSET MANAGER =====") #pula uma linha e exibe o título do menu
