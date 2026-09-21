@@ -1,5 +1,4 @@
 #Step1: Cadastro de tipos de ativos (imutáveis) 
-
 #Do módulo enum, traga a ferramenta Enum
 from enum import Enum 
 #Crie um tipo chamado AssetType, que é uma enumeração com os valores fixos
@@ -22,7 +21,6 @@ SEPARATOR = ";"  # Separador usado nos arquivos
 
 
 #Step2: Leitura com tratamento de erros
-
 #Defina uma função que recebe uma mensagem para exibir
 def read_text(message):
 #Enquanto o usuário não digitar um valor válido, continue pedindo a entrada
@@ -72,14 +70,13 @@ def ask_yes_no(message):
 
 
 #Step4: Arquivos: load_data() e save_data()
-
 #Defina a função load_data, que lê os dados do arquivo e os carrega no dicionário assets
 def load_data():
     """Read the text file and fills the assets dictionary"""
     try: 
         with open(ASSETS_FILE, "r", encoding="utf-8") as file:  # Abre o arquivo de ativos para leitura
             for line in file:  # Itera sobre cada linha do arquivo
-                line = line.strip()
+                line = line.strip()  #remove espaços em branco no início e no final da linha
                 if line == "":  # Ignora linhas vazias
                     continue
                 asset_id, name, owner, location, type_code, description = line.split(SEPARATOR)  # Divide a linha em partes usando o separador
@@ -103,20 +100,105 @@ def save_data():
 
 
 #Step5: CRUD de ativos 
+#Crie as funções de buscar e exibir
+def find_asset():
+    """Asks for an ID or a name and returns the asset (or none)."""
+    key = read_text("Type the asset ID or name: ")
+    if key.isdigit():
+        return assets.get(int(key))
+    for asset in assets.values():
+        if asset["name"].lower() == key.lower():
+            return asset
+    return None
+def show_asset(asset):
+    """Prints one asset in an organized way."""
+    print("-" * 40)
+    print(f"ID: {asset['id']}")
+    print(f"Name: {asset['name']}")
+    print(f"Owner: {asset['owner']}")
+    print(f"Location: {asset['location']}")
+    print(f"Type: {asset['type'].name}   (code{asset['type'].value})")
+    print(f"Description: {asset['description']}")
+    print("-"*40)
+
+#Crie uma função para cadastrar um ativo
+def create_asset():
+    asset_id = read_int("Asset ID (integer): ")
+    if asset_id in assets:                    # unique id (requirement 3)
+        print("Error: this ID already exists.")
+        return
+
+    assets[asset_id] = {
+        "id": asset_id,
+        "name": read_text("Name/hostname: "),
+        "owner": read_text("Owner: "),
+        "location": read_text("Department/location: "),
+        "type": choose_asset_type(),
+        "description": read_text("Description: "),
+        "vulnerabilities": [],
+    }
+    save_data()
+    print("Asset registered successfully!")
+
+#Crie uma função para consultar um ativo
+def read_asset():
+    asset = find_asset()
+    if asset is None:
+        print("Asset not found.")
+    else:
+        show_asset(asset)
+
+#crie uma função para atualizar um ativo
+def update_asset():
+    asset = find_asset()
+    if asset is None:
+        print("Asset not found.")
+        return
+
+    show_asset(asset)
+    print("Type the new value or press Enter to keep the current one.")
+    for field in ["name", "owner", "location", "description"]:
+        new_value = input(f"New {field} [{asset[field]}]: ").strip()
+        if SEPARATOR in new_value:
+            print(f"  Ignored: the character '{SEPARATOR}' is not allowed.")
+        elif new_value != "":
+            asset[field] = new_value
+
+    if ask_yes_no("Change the asset type?"):
+        asset["type"] = choose_asset_type()
+
+    save_data()
+    print("Asset updated.")
+
+#Crie uma função para deletar um ativo
+def delete_asset():
+    asset = find_asset()
+    if asset is None:
+        print("Asset not found.")
+        return
+
+    show_asset(asset)
+    if ask_yes_no("Are you sure you want to delete this asset?"):
+        del assets[asset["id"]]     # its vulnerabilities go away together
+        save_data()
+        print("Asset and its vulnerabilities deleted.")
+
+
+
 
 
 #Step6: Vulnerabilidades
 
 
-#Step3: Crie o menu principal, que será exibido para o usuário
 
+#Step3: Crie o menu principal, que será exibido para o usuário
 #defina a função main, que recebe infos do usuário
 def main():
     load_data() 
 #Enquanto o usuário não digitar um valor válido, continue pedindo a entrada
     while True:
         print("\n===== IT ASSET MANAGER =====")
-        print("1 - Register asset")
+        print("1 - Create asset")
         print("2 - Search asset")
         print("3 - Update asset")
         print("4 - Delete asset")
@@ -126,13 +208,13 @@ def main():
         option = input("Choose an option: ").strip()
 
         if option == "1":
-            print("Not implemented yet.")  # Becomes create_asset() in step 5
+            create_asset()
         elif option == "2":
-            print("Not implemented yet.")  # Becomes read_asset() in step 5
+            read_asset()
         elif option == "3":
-            print("Not implemented yet.")  # Becomes update_asset() in step 5
+            update_asset()
         elif option == "4":
-            print("Not implemented yet.")  # Becomes delete_asset() in step 5
+            delete_asset()
         elif option == "5":
             print("Not implemented yet.")  # Becomes add_vulnerability() in step 6
         elif option == "6":
@@ -145,4 +227,3 @@ def main():
 
 if __name__ == "__main__":
     main()  # Executa a função principal se o script for executado diretamente
-
