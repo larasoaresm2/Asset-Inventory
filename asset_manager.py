@@ -75,10 +75,9 @@ def save_data():
             fields = [str(asset["id"]), asset["name"], asset["owner"], asset["location"], str(asset["type"].value), asset["description"]]  # Cria uma lista com os campos do ativo
             file.write(SEPARADOR.join(fields) + "\n")  # Escreve os campos no arquivo, separados pelo separador e adiciona uma nova linha
 
-# --- temporary test, delete before the commit ---
-load_data()
-print(assets)          # the asset read from the file
-save_data()            # rewrites the file with the same content
+
+#Step5: CRUD
+
 
 
 
