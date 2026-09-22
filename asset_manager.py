@@ -91,12 +91,39 @@ def load_data():
                 }
     except FileNotFoundError:
         pass  # Se o arquivo não existir, apenas ignore o erro e continue
+
+    try:
+        with open(VULNS_FILE, "r", encoding="utf-8") as file:
+            for line in file:
+                line = line.strip()
+                if line == "":
+                    continue
+                asset_id, description, category, severity, status = line.split(SEPARATOR)
+                asset_id = int(asset_id)
+                if asset_id in assets:                 # ignores orphan lines
+                    assets[asset_id]["vulnerabilities"].append({
+                        "description": description,
+                        "category": category,
+                        "severity": severity,
+                        "status": status,
+                    })
+    except FileNotFoundError:
+        pass
+
+
 def save_data():
     """Rewrites the text file with the current content of the dictionary"""
     with open(ASSETS_FILE, "w", encoding="utf-8") as file:  # Abre o arquivo de ativos para escrita
         for asset in assets.values():  # Itera sobre os valores do dicionário assets
             fields = [str(asset["id"]), asset["name"], asset["owner"], asset["location"], str(asset["type"].value), asset["description"]]  # Cria uma lista com os campos do ativo
             file.write(SEPARATOR.join(fields) + "\n")  # Escreve os campos no arquivo, separados pelo separador e adiciona uma nova linha
+
+    with open(VULNS_FILE, "w", encoding="utf-8") as file:
+        for asset in assets.values():
+            for vuln in asset["vulnerabilities"]:
+                fields = [str(asset["id"]), vuln["description"], vuln["category"],
+                          vuln["severity"], vuln["status"]]
+                file.write(SEPARATOR.join(fields) + "\n")
 
 
 #Step5: CRUD de ativos 
@@ -117,7 +144,7 @@ def show_asset(asset):
     print(f"Name: {asset['name']}")
     print(f"Owner: {asset['owner']}")
     print(f"Location: {asset['location']}")
-    print(f"Type: {asset['type'].name}   (code{asset['type'].value})")
+    print(f"Type: {asset['type'].name}   (code {asset['type'].value})")
     print(f"Description: {asset['description']}")
     print("-"*40)
 
@@ -137,6 +164,8 @@ def create_asset():
         "description": read_text("Description: "),
         "vulnerabilities": [],
     }
+    while ask_yes_no("Add a vulnerability now?"):
+        create_vulnerability(assets[asset_id])
     save_data()
     print("Asset registered successfully!")
 
@@ -184,10 +213,45 @@ def delete_asset():
         print("Asset and its vulnerabilities deleted.")
 
 
-
-
-
 #Step6: Vulnerabilidades
+#Cadastrar uma vulnerabilidade
+def create_vulnerability(asset):
+    """Registers one vulnerability for an asset already found."""
+    vuln = {
+        "description": read_text("Vulnerability description: "),
+        "category": read_text("Category (e.g. weak password, outdated software): "),
+        "severity": choose_from_list("Severity:", SEVERITIES),
+        "status": choose_from_list("Status:", STATUSES),
+    }
+    asset["vulnerabilities"].append(vuln)
+    print("Vulnerability added.")
+
+
+def add_vulnerability():
+    """Menu option: finds the asset and adds a vulnerability to it."""
+    asset = find_asset()
+    if asset is None:
+        print("Asset not found.")
+        return
+    create_vulnerability(asset)
+    save_data()
+
+#liste as vulnerabilidades de um ativo
+def list_vulnerabilities():
+    asset = find_asset()
+    if asset is None:
+        print("Asset not found.")
+        return
+
+    if len(asset["vulnerabilities"]) == 0:
+        print(f"The asset '{asset['name']}' has no registered vulnerabilities.")
+        return
+
+    print(f"Vulnerabilities of '{asset['name']}':")
+    for number, vuln in enumerate(asset["vulnerabilities"], start=1):
+        print(f"  {number}. {vuln['description']} | category: {vuln['category']} "
+              f"| severity: {vuln['severity']} | status: {vuln['status']}")
+
 
 
 
@@ -199,7 +263,7 @@ def main():
     while True:
         print("\n===== IT ASSET MANAGER =====")
         print("1 - Create asset")
-        print("2 - Search asset")
+        print("2 - Read asset")
         print("3 - Update asset")
         print("4 - Delete asset")
         print("5 - Add vulnerability to asset")
@@ -216,14 +280,14 @@ def main():
         elif option == "4":
             delete_asset()
         elif option == "5":
-            print("Not implemented yet.")  # Becomes add_vulnerability() in step 6
+            add_vulnerability()
         elif option == "6":
-            print("Not implemented yet.")  # Becomes list_vulnerabilities() in step 6
+            list_vulnerabilities()
         elif option == "0":
             print("Goodbye!")
             break
         else:
-            print("Invalid option. Please choose a valid option.")
+            print("Invalid option. Please choose a valid option.") 
 
 if __name__ == "__main__":
     main()  # Executa a função principal se o script for executado diretamente
