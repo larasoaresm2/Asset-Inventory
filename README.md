@@ -74,6 +74,7 @@ The assignment was developed in branches, each merged into `main` at the end of 
 | --- | --- |
 | `feature/base` | Enum, tuples, dictionary, input functions with error handling, and the menu |
 | `feature/assets` | File reading and writing, asset CRUD and vulnerabilities |
+| `docs/readme` | Project documentation |
 
 ## Author
 
