@@ -1,0 +1,3 @@
+1;AWS EC2 instance-01;Lara Soares Miranda;Cyber Security;2;Cyber Sec EC2 Instance
+2;AWS EC2 instance-02;Lara Soares Miranda;Cyber Security;2;Cyber Sec EC2 Instance
+3;Jumpcloud;Lara Soares Miranda;Cyber Security;4;MDM and IDP tool
