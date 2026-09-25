@@ -1,0 +1,3 @@
+1;Instance outside security group;Network vulnerability;4;2
+2;Access problems;Shared password;4;2
+3;Don't have RBAC;RBAC;3;3
