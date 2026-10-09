@@ -1,17 +1,17 @@
 def read_text(message):
 
     while True:
-        text = input(message).strip()  
-        if text == "": 
+        text = input(message).strip()
+        if text == "":
             print("Error: this field cannot be empty. Please enter a valid value.")
-        else: 
-            return text  
+        else:
+            return text
 
 def read_int(message):
     while True:
         try:
-            return int(input(message))  
-        except ValueError:  
+            return int(input(message))
+        except ValueError:
             print(" Error: please type an integer number.")
 
 def choose_from_list(title, options):
@@ -28,8 +28,8 @@ def choose_from_list(title, options):
 def read_float(message):
     while True:
         try:
-            return float(input(message))  
-        except ValueError:  
+            return float(input(message))
+        except ValueError:
             print(" Error: please type a number.")
 
 def ask_yes_no(message):

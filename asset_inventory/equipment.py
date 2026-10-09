@@ -13,8 +13,8 @@ class Equipment:
         self.vulnerability_ids = vulnerability_ids
 
     def exposure_factor(self):
-       """How much this type of equipment amplifies its own risk."""
-       return 1.0
+        """How much this type of equipment amplifies its own risk."""
+        return 1.0
 
     def add_vulnerability(self, vulnerability_id):
         if vulnerability_id not in self.vulnerability_ids:

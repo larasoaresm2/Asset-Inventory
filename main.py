@@ -3,7 +3,10 @@ from asset_inventory.menu import Menu
 
 def main():
     menu = Menu(Inventory())
-    menu.run()
+    try:
+        menu.run()
+    except (KeyboardInterrupt, EOFError):
+        print("\nGoodbye!")
 
 if __name__ == "__main__":
     main()
