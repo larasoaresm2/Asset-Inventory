@@ -96,6 +96,7 @@ Each stage is developed in its own branch and merged into `main` through a pull 
 | `feat/json-storage` | JSON persistence *(planned)* |
 | `feat/docker` | Dockerfile and container execution *(planned)* |
 
+Sprint 3 study exercises are in the [sprint3](https://github.com/larasoaresm2/sprint3) repository.
 
 ## Author
 
