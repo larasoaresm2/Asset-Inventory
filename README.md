@@ -1,24 +1,35 @@
 # Asset Inventory
 
-An IT asset inventory manager, written in Python, that tracks assets and their associated vulnerabilities through a terminal menu, with data persisted in text files.
+An IT asset inventory manager written in Python, using object-oriented programming. It tracks equipments and vulnerabilities through a terminal menu, links each vulnerability to the equipments it affects, and will estimate the risk of each equipment with a linear-algebra model.
 
-First graded assignment (sprints 1 and 2) for the Cybersecurity course — School of Electrical Engineering, UFU, 2026/2.
+Second graded assignment (sprints 3, 4 and 5) for the Cybersecurity course — School of Electrical Engineering, UFU, 2026/2. The first assignment is preserved in the tag [`trabalho-1`](../../tree/trabalho-1).
+
+## Assignment 2 requirements
+
+| # | Requirement | Weight | Status |
+| --- | --- | --- | --- |
+| 1 | Each asset is an object of an equipment class hierarchy | 20% | Done |
+| 2 | Data stored as a JSON array of objects | 20% | Planned |
+| 3 | Application running in a Docker container for 24 hours | 45% | Planned |
+| 4 | Effective risk of each equipment computed with a linear model | 15% | In progress |
 
 ## Features
 
-- **Create** IT assets with a unique identifier, name/hostname, owner, department, type and description
-- **Read** an asset by its identifier or by its name
-- **Update** the data of a registered asset
-- **Delete** an asset, removing its vulnerabilities as well
-- **List** all registered assets
-- **Register vulnerabilities** for an asset, with description, category, severity and remediation status
-- **List** the vulnerabilities of an asset, or report that it has none
-- **Update** the remediation status of a vulnerability
-- Error handling on every input: empty fields, invalid types, out-of-range options and duplicate identifiers
+- **Equipments:** create, list, show, update and delete. Search by ID or by name (case-insensitive)
+- **Vulnerabilities:** create, list, update (description, category, CVSS and status) and delete
+- **Links:** link and unlink a vulnerability to an equipment, and list the vulnerabilities of an equipment
+- **Validation** while typing, asking again instead of losing what was already typed:
+  - IDs must be positive integers and unique
+  - Equipment names must be unique (ignoring case) and cannot contain only digits, so a search by name is never ambiguous or confused with an ID
+  - CVSS must be a number between 0.0 and 10.0
+  - Linking an already linked vulnerability, or unlinking one that is not linked, is rejected
+- **Referential integrity:** deleting a vulnerability also unlinks it from every equipment; deleting an equipment keeps the vulnerabilities, since they may affect other equipments
+- **Confirmation** before any deletion
+- Clean exit with `Ctrl+C` or `Ctrl+D`
 
 ## How to run
 
-Requirement: Python 3.
+Requirement: Python 3.10 or newer.
 
 ```bash
 git clone https://github.com/larasoaresm2/Asset-Inventory.git
@@ -26,63 +37,65 @@ cd Asset-Inventory
 python3 main.py
 ```
 
-Run it from the project root, since the data files are read from and written to the `db/` folder.
+Data is kept in memory for now; JSON persistence is the next stage.
 
-## Data structures
+## Class design
 
-| Structure | Where it is used | Why |
+```
+Equipment (base class)
+├── Server
+├── Notebook
+├── Router
+├── WebApplication
+└── Database
+
+Vulnerability ── Status (Enum)
+
+Inventory ── has many ──> Equipment, Vulnerability
+Menu ── uses ──> Inventory
+```
+
+| Class | File | Responsibility |
 | --- | --- | --- |
-| `Enum` (`AssetType`) | Asset types: NOTEBOOK, SERVER, ROUTER, WEB_APPLICATION, DATABASE | A fixed catalog in which each type carries an integer code used as its reference in the system |
-| `Enum` (`Severity`, `Status`) | Severity levels (LOW, MEDIUM, HIGH, CRITICAL) and remediation statuses (OPEN, IN_PROGRESS, FIXED, RISK_ACCEPTED) | Fixed options that the user only picks from; each one is saved to the file by its integer code |
-| Dictionary (`assets`) | Registered assets, indexed by identifier | Direct lookup by ID, with no need to traverse a list |
-| List (`vulnerabilities`) | Vulnerabilities inside each asset | Grows as new vulnerabilities are registered |
+| `Equipment` and subclasses | `asset_inventory/equipment.py` | One IT asset: ID, name, owner, location, description and the IDs of the vulnerabilities that affect it |
+| `Vulnerability` | `asset_inventory/vulnerability.py` | One security weakness: ID, description, category, CVSS score and status. Validates the CVSS score |
+| `Status` | `asset_inventory/enums.py` | Remediation status: OPEN, IN_PROGRESS, FIXED, RISK_ACCEPTED |
+| `Inventory` | `asset_inventory/inventory.py` | Stores all objects and enforces the business rules (unique IDs and names, links, integrity) |
+| `Menu` | `asset_inventory/menu.py` | The only class that talks to the user (`print` and `input`) |
+| — | `asset_inventory/helpers.py` | Input functions: `read_text()`, `read_int()`, `read_float()`, `choose_from_list()`, `ask_yes_no()` |
+| — | `main.py` | Entry point: creates the `Inventory` and the `Menu` |
 
-## Persistence
+### Object-oriented concepts used
 
-Data lives in two text files in the `db/` folder, one record per line, with fields separated by `;`.
+- **Inheritance:** each equipment type is a subclass of `Equipment` and reuses all its attributes and methods
+- **Polymorphism:** every subclass overrides `exposure_factor()`, which will weight the equipment's own risk. The menu creates any type through the same call, `equipment_class(...)`
+- **Composition:** `Inventory` *has* equipments and vulnerabilities; `Menu` *has* an `Inventory`
+- **Encapsulation of rules:** validation lives in `Inventory` and `Vulnerability`, so it protects the data whatever the source (menu today, JSON file and web API later). The menu validates again while typing only to improve the user experience (defense in depth)
 
-`db/assets.txt` — `id;name;owner;department;type code;description`
+### Exposure factor by equipment type
 
-```
-10;srv-01;Ana;IT;2;Main server
-```
+| Type | Factor | Rationale |
+| --- | --- | --- |
+| `WebApplication` | 1.5 | Exposed to the internet by design |
+| `Router` | 1.3 | Sits on the network perimeter, reachable from outside |
+| `Server` | 1.2 | Exposes network services to many clients |
+| `Notebook` | 1.0 | Reference value |
+| `Database` | 0.8 | Should not be directly reachable; its risk arrives through the applications that depend on it |
 
-`db/vulnerabilities.txt` — `asset id;description;category;severity code;status code`
-
-```
-10;No updates;Outdated software;3;1
-```
-
-The first field of `vulnerabilities.txt` is the identifier of the asset that owns the vulnerability, and it is what links the two files. Severity and status are stored as the integer codes of the `Severity` and `Status` enums (in the example, `3` = HIGH and `1` = OPEN).
-
-`load_data()` reads both files when the program starts; `save_data()` rewrites both after every change. This is why user input cannot contain `;`, the field separator.
-
-## Code organization
-
-The program is split into modules:
-
-| Module | Content |
-| --- | --- |
-| `enums.py` | Fixed catalogs: `AssetType`, `Severity`, `Status` |
-| `constants.py` | File paths (`ASSETS_FILE`, `VULNS_FILE`) and the field `SEPARATOR` |
-| `helpers.py` | Input handling: `read_text()`, `read_int()`, `choose_from_list()`, `choose_asset_type()`, `ask_yes_no()` |
-| `database.py` | The `assets` dictionary, `load_data()` and `save_data()` |
-| `assets.py` | Asset CRUD: `find_asset()`, `show_asset()`, `list_assets()`, `create_asset()`, `read_asset()`, `update_asset()`, `delete_asset()` |
-| `vulnerabilities.py` | `create_vulnerability()`, `add_vulnerability()`, `list_vulnerabilities()`, `update_vulnerability_status()` |
-| `main.py` | Entry point: `main()`, with the menu |
-| `db/` | Data files `assets.txt` and `vulnerabilities.txt` |
+The factor measures **exposure** only. How risk spreads from one equipment to another is modeled separately by the dependency matrix of the risk model, so it is not counted twice.
 
 ## Development
 
-The assignment was developed in branches, each merged into `main` at the end of its stage:
+Each stage is developed in its own branch and merged into `main` through a pull request.
 
 | Branch | Content |
 | --- | --- |
-| `feature/base` | Enum, tuples, dictionary, input functions with error handling, and the menu |
-| `feature/assets` | File reading and writing, asset CRUD and vulnerabilities |
-| `docs/readme` | Project documentation |
-| `refactor/clean-comments` | Split the single `asset_manager.py` file into modules |
-| `docs/update-after-refactor` | Removed the old `asset_manager.py` and updated the documentation for the module layout |
+| `feature/base`, `feature/assets`, `docs/readme`, `refactor/clean-comments`, `docs/update-after-refactor` | Assignment 1 (see tag `trabalho-1`) |
+| `refactor/oop-models` | Rewrite in object-oriented programming: classes, inheritance, polymorphism and the new menu |
+| `feat/risk-analysis` | Dependencies between equipments and the risk model with NumPy *(next)* |
+| `feat/json-storage` | JSON persistence *(planned)* |
+| `feat/docker` | Dockerfile and container execution *(planned)* |
+
 
 ## Author
 
