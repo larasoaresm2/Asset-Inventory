@@ -70,11 +70,4 @@ class Inventory:
         equipment = self.get_equipment(equipment_id)
         if equipment is None:
             raise ValueError(f"Equipment ID {equipment_id} not found.")
-        return [self.get_vulnerability(v_id) for v_id in equipment.vulnerability_ids]
-    
-
-    
-
-
-
-    
+        return [self.get_vulnerability(v_id) for v_id in equipment.vulnerability_ids]    
