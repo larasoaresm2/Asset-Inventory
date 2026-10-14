@@ -1,6 +1,6 @@
 # Asset Inventory
 
-An IT asset inventory manager written in Python, using object-oriented programming. It tracks equipments and vulnerabilities through a terminal menu, links each vulnerability to the equipments it affects, and will estimate the risk of each equipment with a linear-algebra model.
+An IT asset inventory manager written in Python, using object-oriented programming. It tracks equipments and vulnerabilities through a terminal menu, links each vulnerability to the equipments it affects, and estimates the risk of each equipment with a linear-algebra model.
 
 Second graded assignment (sprints 3, 4 and 5) for the Cybersecurity course — School of Electrical Engineering, UFU, 2026/2. The first assignment is preserved in the tag [`trabalho-1`](../../tree/trabalho-1).
 
@@ -11,7 +11,7 @@ Second graded assignment (sprints 3, 4 and 5) for the Cybersecurity course — S
 | 1 | Each asset is an object of an equipment class hierarchy | 20% | Done |
 | 2 | Data stored as a JSON array of objects | 20% | Planned |
 | 3 | Application running in a Docker container for 24 hours | 45% | Planned |
-| 4 | Effective risk of each equipment computed with a linear model | 15% | In progress |
+| 4 | Effective risk of each equipment computed with a linear model | 15% | Done |
 
 ## Features
 
@@ -26,6 +26,8 @@ Second graded assignment (sprints 3, 4 and 5) for the Cybersecurity course — S
 - **Referential integrity:** deleting a vulnerability also unlinks it from every equipment; deleting an equipment keeps the vulnerabilities, since they may affect other equipments
 - **Confirmation** before any deletion
 - Clean exit with `Ctrl+C` or `Ctrl+D`
+- **Dependencies:** register that one equipment inherits a fraction of another equipment's risk, remove and list them
+- **Risk report:** own risk and effective risk of every equipment, highest first, with the condition number of the system
 
 ## How to run
 
@@ -34,6 +36,9 @@ Requirement: Python 3.10 or newer.
 ```bash
 git clone https://github.com/larasoaresm2/Asset-Inventory.git
 cd Asset-Inventory
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 python3 main.py
 ```
 
@@ -51,8 +56,9 @@ Equipment (base class)
 
 Vulnerability ── Status (Enum)
 
-Inventory ── has many ──> Equipment, Vulnerability
-Menu ── uses ──> Inventory
+Inventory ── has many ──> Equipment, Vulnerability, Dependency
+RiskAnalysis ── reads ──> Inventory
+Menu ── uses ──> Inventory, RiskAnalysis
 ```
 
 | Class | File | Responsibility |
@@ -61,6 +67,8 @@ Menu ── uses ──> Inventory
 | `Vulnerability` | `asset_inventory/vulnerability.py` | One security weakness: ID, description, category, CVSS score and status. Validates the CVSS score |
 | `Status` | `asset_inventory/enums.py` | Remediation status: OPEN, IN_PROGRESS, FIXED, RISK_ACCEPTED |
 | `Inventory` | `asset_inventory/inventory.py` | Stores all objects and enforces the business rules (unique IDs and names, links, integrity) |
+| `Dependency` | `asset_inventory/dependency.py` | One entry of the dependency matrix: the dependent equipment inherits a fraction of the source equipment's risk |
+| `RiskAnalysis` | `asset_inventory/risk.py` | Builds the matrices with NumPy, checks that the system can be solved and computes own and effective risk |
 | `Menu` | `asset_inventory/menu.py` | The only class that talks to the user (`print` and `input`) |
 | — | `asset_inventory/helpers.py` | Input functions: `read_text()`, `read_int()`, `read_float()`, `choose_from_list()`, `ask_yes_no()` |
 | — | `main.py` | Entry point: creates the `Inventory` and the `Menu` |
@@ -68,8 +76,8 @@ Menu ── uses ──> Inventory
 ### Object-oriented concepts used
 
 - **Inheritance:** each equipment type is a subclass of `Equipment` and reuses all its attributes and methods
-- **Polymorphism:** every subclass overrides `exposure_factor()`, which will weight the equipment's own risk. The menu creates any type through the same call, `equipment_class(...)`
-- **Composition:** `Inventory` *has* equipments and vulnerabilities; `Menu` *has* an `Inventory`
+- **Polymorphism:** every subclass overrides `exposure_factor()`, which weights the equipment's own risk. The menu creates any type through the same call, `equipment_class(...)`
+- **Composition:** `Inventory` *has* equipments, vulnerabilities and dependencies; `Menu` *has* an `Inventory`; `RiskAnalysis` *reads* an `Inventory`
 - **Encapsulation of rules:** validation lives in `Inventory` and `Vulnerability`, so it protects the data whatever the source (menu today, JSON file and web API later). The menu validates again while typing only to improve the user experience (defense in depth)
 
 ### Exposure factor by equipment type
@@ -84,6 +92,46 @@ Menu ── uses ──> Inventory
 
 The factor measures **exposure** only. How risk spreads from one equipment to another is modeled separately by the dependency matrix of the risk model, so it is not counted twice.
 
+## Risk model
+
+For *n* equipments and *m* active vulnerabilities (status OPEN or IN_PROGRESS; FIXED and RISK_ACCEPTED do not add risk):
+
+| Element | Size | Meaning |
+| --- | --- | --- |
+| `M` | n × m | Incidence matrix: `M[i][j] = 1` if equipment *i* has vulnerability *j* |
+| `v` | m | Severity vector: CVSS score of each vulnerability |
+| `F` | n × n | Diagonal matrix with the exposure factor of each equipment |
+| `A` | n × n | Dependency matrix: `A[i][j]` is the fraction of the risk of equipment *j* inherited by equipment *i* |
+
+```
+Own risk:        b = F · M · v
+Effective risk:  x = b + A · x   ⟺   (I − A) · x = b
+```
+
+**Why the system always has a solution.** When a dependency is registered, the sum of each row of `A` must stay below 1 (and `A[i][i] = 0`). Then `I − A` is strictly diagonally dominant, and therefore invertible.
+
+**Numerical check before solving.** The program computes the condition number of `I − A` with `numpy.linalg.cond` and refuses to solve when it is infinite or above 10¹². The determinant is shown only for comparison: in floating point it is almost never exactly zero, so the condition number is the reliable test.
+
+**Solving.** `numpy.linalg.solve(I − A, b)`, which is more precise and faster than computing the inverse.
+
+### Validation by hand
+
+Three `Notebook` equipments (exposure factor 1.0, so `b = M · v`), vulnerabilities V1 = 7.5, V2 = 5.0 and V3 = 9.8:
+
+- E1 has V1; E2 has V2 and V3; E3 has none → `b = [7.5, 14.8, 0]`
+- E1 inherits 0.1 of E2; E3 inherits 0.5 of E1 and 0.2 of E2 (row sums 0.1, 0 and 0.7)
+- By hand: x₂ = 14.8; x₁ = 7.5 + 0.1 · 14.8 = 8.98; x₃ = 0 + 0.5 · 8.98 + 0.2 · 14.8 = 7.45
+
+The program's risk report gives the same result:
+
+```
+Condition number of I - A: 1.728 (determinant: 1)
+  ID  Equipment            Type             Own risk  Effective
+   2  E2                   Notebook            14.80      14.80
+   1  E1                   Notebook             7.50       8.98
+   3  E3                   Notebook             0.00       7.45
+```
+
 ## Development
 
 Each stage is developed in its own branch and merged into `main` through a pull request.
@@ -92,7 +140,7 @@ Each stage is developed in its own branch and merged into `main` through a pull 
 | --- | --- |
 | `feature/base`, `feature/assets`, `docs/readme`, `refactor/clean-comments`, `docs/update-after-refactor` | Assignment 1 (see tag `trabalho-1`) |
 | `refactor/oop-models` | Rewrite in object-oriented programming: classes, inheritance, polymorphism and the new menu |
-| `feat/risk-analysis` | Dependencies between equipments and the risk model with NumPy *(next)* |
+| `feat/risk-analysis` | Dependencies between equipments and the risk model with NumPy |
 | `feat/json-storage` | JSON persistence *(planned)* |
 | `feat/docker` | Dockerfile and container execution *(planned)* |
 
