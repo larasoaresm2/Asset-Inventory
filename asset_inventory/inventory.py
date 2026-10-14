@@ -3,6 +3,7 @@ class Inventory:
     def __init__(self):
         self.equipments = {}
         self.vulnerabilities = {}
+        self.dependencies = {}
 
     # Equipments
     def add_equipment(self, equipment):
@@ -15,7 +16,7 @@ class Inventory:
         if equipment_id <= 0:
             raise ValueError("Equipment ID must be a positive integer.")
         if equipment_id in self.equipments:
-            raise ValueError(f"Equipment with ID {equipment_id} already exists.") 
+            raise ValueError(f"Equipment with ID {equipment_id} already exists.")
 
     def check_name_available(self, name, current_id=None):
         """Names must be unique (ignoring case) and not only digits,
@@ -40,6 +41,9 @@ class Inventory:
         if equipment_id not in self.equipments:
             raise ValueError(f"Equipment with ID {equipment_id} does not exist.")
         del self.equipments[equipment_id]
+        for key in list(self.dependencies):
+            if equipment_id in key:
+                del self.dependencies[key]
 
     def list_equipments(self):
         return list(self.equipments.values())
@@ -55,7 +59,6 @@ class Inventory:
             raise ValueError("Vulnerability ID must be a positive integer.")
         if vulnerability_id in self.vulnerabilities:
             raise ValueError(f"Vulnerability with ID {vulnerability_id} already exists.")
-        
 
     def get_vulnerability(self, vulnerability_id):
         return self.vulnerabilities.get(vulnerability_id)
@@ -97,4 +100,37 @@ class Inventory:
         equipment = self.get_equipment(equipment_id)
         if equipment is None:
             raise ValueError(f"Equipment ID {equipment_id} not found.")
-        return [self.get_vulnerability(v_id) for v_id in equipment.vulnerability_ids]    
+        return [self.get_vulnerability(v_id) for v_id in equipment.vulnerability_ids]
+    
+    # Dependencies between equipments (matrix A of the risk model)
+    def add_dependency(self, dependency):
+        if dependency.dependent_id not in self.equipments:
+            raise ValueError(f"Equipment ID {dependency.dependent_id} not found.")
+        if dependency.source_id not in self.equipments:
+            raise ValueError(f"Equipment ID {dependency.source_id} not found.")
+        key = (dependency.dependent_id, dependency.source_id)
+        if key in self.dependencies:
+            raise ValueError("This dependency already exists.")
+        current = self.inherited_fraction(dependency.dependent_id)
+        if current + dependency.fraction >= 1.0:
+            raise ValueError(
+                f"Equipment {dependency.dependent_id} already inherits {current:g}; "
+                f"the total must stay below 1.0 so that I - A is invertible.")
+        self.dependencies[key] = dependency
+
+    def inherited_fraction(self, dependent_id):
+        """Sum of the fractions an equipment inherits (one row of matrix A)."""
+        total = 0.0
+        for dependency in self.dependencies.values():
+            if dependency.dependent_id == dependent_id:
+                total += dependency.fraction
+        return total
+
+    def remove_dependency(self, dependent_id, source_id):
+        key = (dependent_id, source_id)
+        if key not in self.dependencies:
+            raise ValueError("This dependency does not exist.")
+        del self.dependencies[key]
+
+    def list_dependencies(self):
+        return list(self.dependencies.values())

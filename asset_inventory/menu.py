@@ -2,6 +2,8 @@ from asset_inventory.enums import Status
 from asset_inventory.equipment import Database, Notebook, Router, Server, WebApplication
 from asset_inventory.helpers import (ask_yes_no, choose_from_list, read_float, read_int, read_text)
 from asset_inventory.vulnerability import Vulnerability
+from asset_inventory.dependency import Dependency
+from asset_inventory.risk import RiskAnalysis
 
 # The classes themselves, in order shown to the user
 EQUIPMENT_TYPES = [Server, Notebook, Router, WebApplication, Database]
@@ -23,6 +25,10 @@ class Menu:
             "10": ("List vulnerabilities of equipment", self.list_vulnerabilities_of),
             "11": ("Update vulnerability", self.update_vulnerability),
             "12": ("Delete vulnerability", self.delete_vulnerability),
+            "13": ("Add dependency between equipments", self.add_dependency),
+            "14": ("Remove dependency", self.remove_dependency),
+            "15": ("List dependencies", self.list_dependencies),
+            "16": ("Risk report", self.risk_report),
         }
 
     def run(self):
@@ -58,9 +64,9 @@ class Menu:
                 return EQUIPMENT_TYPES[choice - 1]
             print("Error: option out of range.")
 
-    def _ask_equipment(self):
+    def _ask_equipment(self, message="Equipment ID or name: "):
         """Ask for an ID or name and return the equipment."""
-        key = read_text(" Equipment ID or name: ")
+        key = read_text(message)
         if key.isdigit():
             key = int(key)
         equipment = self.inventory.get_equipment(key)
@@ -216,3 +222,40 @@ class Menu:
             print("Vulnerability deleted successfully!")
         else:
             print("Deletion cancelled.")
+
+    # Dependencies
+    def add_dependency(self):
+        dependent = self._ask_equipment("Dependent equipment (ID or name): ")
+        source = self._ask_equipment("Equipment it depends on (ID or name): ")
+        if dependent.id == source.id:
+            raise ValueError("An equipment cannot depend on itself.")
+        current = self.inventory.inherited_fraction(dependent.id)
+        print(f"'{dependent.name}' already inherits {current:g} in total; the sum must stay below 1.")
+        fraction = read_float("Fraction of the risk inherited (between 0 and 1): ")
+        self.inventory.add_dependency(Dependency(dependent.id, source.id, fraction))
+        print(f"'{dependent.name}' now inherits {fraction:.0%} of the risk of '{source.name}'.")
+
+    def remove_dependency(self):
+        dependent = self._ask_equipment("Dependent equipment (ID or name): ")
+        source = self._ask_equipment("Equipment it depends on (ID or name): ")
+        self.inventory.remove_dependency(dependent.id, source.id)
+        print("Dependency removed.")
+
+    def list_dependencies(self):
+        dependencies = self.inventory.list_dependencies()
+        if not dependencies:
+            print("No dependencies registered.")
+            return
+        for dependency in dependencies:
+            print(dependency)
+
+    # Risk
+    def risk_report(self):
+        analysis = RiskAnalysis(self.inventory)
+        rows = analysis.compute()
+        print(f"Condition number of I - A: {analysis.condition_number:.4g} "
+              f"(determinant: {analysis.determinant:.4g})")
+        print(f"{'ID':>4}  {'Equipment':<20} {'Type':<15} {'Own risk':>9} {'Effective':>10}")
+        for equipment, own_risk, effective_risk in rows:
+            print(f"{equipment.id:>4}  {equipment.name:<20} {type(equipment).__name__:<15} "
+                  f"{own_risk:>9.2f} {effective_risk:>10.2f}")
