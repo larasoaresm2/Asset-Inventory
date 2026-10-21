@@ -45,14 +45,15 @@ class RiskAnalysis:
         if not equipments:
             raise ValueError("No equipments registered.")
 
-        b = F @ M @ v                     
+        b = F @ M @ v
         system = np.eye(len(equipments)) - A
         self.determinant = np.linalg.det(system)
         self.condition_number = np.linalg.cond(system)
         if not np.isfinite(self.condition_number) or self.condition_number > MAX_CONDITION_NUMBER:
             raise ValueError(
                 f"I - A is singular or ill-conditioned (condition number "
-                f"{self.condition_number:.2e}); the system was not solved.")
+                f"{self.condition_number:.2e}); the system was not solved."
+            )
 
         x = np.linalg.solve(system, b)
         rows = list(zip(equipments, b, x))

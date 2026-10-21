@@ -15,5 +15,7 @@ class Dependency:
         self.fraction = fraction
 
     def __str__(self):
-        return (f"Equipment {self.dependent_id} inherits {self.fraction:.0%} "
-                f"of the risk of equipment {self.source_id}")
+        return (
+            f"Equipment {self.dependent_id} inherits {self.fraction:.0%} "
+            f"of the risk of equipment {self.source_id}"
+        )
