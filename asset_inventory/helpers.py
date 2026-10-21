@@ -7,12 +7,14 @@ def read_text(message):
         else:
             return text
 
+
 def read_int(message):
     while True:
         try:
             return int(input(message))
         except ValueError:
             print(" Error: please type an integer number.")
+
 
 def choose_from_list(title, options):
     members = list(options)
@@ -25,12 +27,14 @@ def choose_from_list(title, options):
             return members[choice - 1]
         print("  Error: option out of range.")
 
+
 def read_float(message):
     while True:
         try:
             return float(input(message))
         except ValueError:
             print(" Error: please type a number.")
+
 
 def ask_yes_no(message):
     while True:

@@ -25,7 +25,10 @@ class Equipment:
             self.vulnerability_ids.remove(vulnerability_id)
 
     def __str__(self):
-        return (f"[{self.id}] {self.name} ({type(self).__name__}) | "f"owner: {self.owner} | location: {self.location}")
+        return (
+            f"[{self.id}] {self.name} ({type(self).__name__}) | "
+            f"owner: {self.owner} | location: {self.location}"
+        )
 
 
 class Server(Equipment):

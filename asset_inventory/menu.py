@@ -1,6 +1,6 @@
 from asset_inventory.enums import Status
 from asset_inventory.equipment import Database, Notebook, Router, Server, WebApplication
-from asset_inventory.helpers import (ask_yes_no, choose_from_list, read_float, read_int, read_text)
+from asset_inventory.helpers import ask_yes_no, choose_from_list, read_float, read_int, read_text
 from asset_inventory.vulnerability import Vulnerability
 from asset_inventory.dependency import Dependency
 from asset_inventory.risk import RiskAnalysis
@@ -8,8 +8,10 @@ from asset_inventory.risk import RiskAnalysis
 # The classes themselves, in order shown to the user
 EQUIPMENT_TYPES = [Server, Notebook, Router, WebApplication, Database]
 
+
 class Menu:
     """text interface: the only class that talks to the user (print/input)."""
+
     def __init__(self, inventory):
         self.inventory = inventory
         self.options = {
@@ -52,7 +54,6 @@ class Menu:
             except ValueError as error:
                 print(f"Error: {error}")
 
-
     # Small helpers
     def _choose_equipment_type(self):
         print("Equipment types:")
@@ -92,15 +93,16 @@ class Menu:
                 return cvss
             print("  Error: CVSS must be between 0.0 and 10.0.")
 
-
     # Equipment
     def create_equipment(self):
         equipment_class = self._choose_equipment_type()
         equipment = equipment_class(
-            self._ask_until_valid(read_int, "Equipment ID (integer): ",
-                                  self.inventory.check_equipment_id_available),
-            self._ask_until_valid(read_text, "Name/hostname: ",
-                                  self.inventory.check_name_available),
+            self._ask_until_valid(
+                read_int, "Equipment ID (integer): ", self.inventory.check_equipment_id_available
+            ),
+            self._ask_until_valid(
+                read_text, "Name/hostname: ", self.inventory.check_name_available
+            ),
             read_text("Owner: "),
             read_text("Department/location: "),
             read_text("Description: "),
@@ -146,8 +148,11 @@ class Menu:
     # Vulnerabilities
     def create_vulnerability(self):
         vulnerability = Vulnerability(
-            self._ask_until_valid(read_int, "Vulnerability ID (integer): ",
-                                  self.inventory.check_vulnerability_id_available),
+            self._ask_until_valid(
+                read_int,
+                "Vulnerability ID (integer): ",
+                self.inventory.check_vulnerability_id_available,
+            ),
             read_text("Description: "),
             read_text("Category (e.g. weak password, outdated software): "),
             self._read_cvss("CVSS score (0.0 to 10.0): "),
@@ -230,7 +235,9 @@ class Menu:
         if dependent.id == source.id:
             raise ValueError("An equipment cannot depend on itself.")
         current = self.inventory.inherited_fraction(dependent.id)
-        print(f"'{dependent.name}' already inherits {current:g} in total; the sum must stay below 1.")
+        print(
+            f"'{dependent.name}' already inherits {current:g} in total; the sum must stay below 1."
+        )
         fraction = read_float("Fraction of the risk inherited (between 0 and 1): ")
         self.inventory.add_dependency(Dependency(dependent.id, source.id, fraction))
         print(f"'{dependent.name}' now inherits {fraction:.0%} of the risk of '{source.name}'.")
@@ -253,9 +260,13 @@ class Menu:
     def risk_report(self):
         analysis = RiskAnalysis(self.inventory)
         rows = analysis.compute()
-        print(f"Condition number of I - A: {analysis.condition_number:.4g} "
-              f"(determinant: {analysis.determinant:.4g})")
+        print(
+            f"Condition number of I - A: {analysis.condition_number:.4g} "
+            f"(determinant: {analysis.determinant:.4g})"
+        )
         print(f"{'ID':>4}  {'Equipment':<20} {'Type':<15} {'Own risk':>9} {'Effective':>10}")
         for equipment, own_risk, effective_risk in rows:
-            print(f"{equipment.id:>4}  {equipment.name:<20} {type(equipment).__name__:<15} "
-                  f"{own_risk:>9.2f} {effective_risk:>10.2f}")
+            print(
+                f"{equipment.id:>4}  {equipment.name:<20} {type(equipment).__name__:<15} "
+                f"{own_risk:>9.2f} {effective_risk:>10.2f}"
+            )

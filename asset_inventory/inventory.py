@@ -1,5 +1,6 @@
 class Inventory:
     """Keeps all equipments and vulnerabilities and enforces the rules that connect them."""
+
     def __init__(self):
         self.equipments = {}
         self.vulnerabilities = {}
@@ -26,7 +27,6 @@ class Inventory:
         existing = self.get_equipment(name)
         if existing is not None and existing.id != current_id:
             raise ValueError(f"An equipment named '{existing.name}' already exists.")
-
 
     def get_equipment(self, key):
         """Find an equipment by ID (int) or name (str). Returns None if not found."""
@@ -83,7 +83,9 @@ class Inventory:
         if vulnerability is None:
             raise ValueError(f"Vulnerability ID {vulnerability_id} not found.")
         if vulnerability_id in equipment.vulnerability_ids:
-            raise ValueError(f"Vulnerability {vulnerability_id} is already linked to this equipment.")
+            raise ValueError(
+                f"Vulnerability {vulnerability_id} is already linked to this equipment."
+            )
         equipment.add_vulnerability(vulnerability_id)
 
     def unlink(self, equipment_id, vulnerability_id):
@@ -101,7 +103,7 @@ class Inventory:
         if equipment is None:
             raise ValueError(f"Equipment ID {equipment_id} not found.")
         return [self.get_vulnerability(v_id) for v_id in equipment.vulnerability_ids]
-    
+
     # Dependencies between equipments (matrix A of the risk model)
     def add_dependency(self, dependency):
         if dependency.dependent_id not in self.equipments:
@@ -115,7 +117,8 @@ class Inventory:
         if current + dependency.fraction >= 1.0:
             raise ValueError(
                 f"Equipment {dependency.dependent_id} already inherits {current:g}; "
-                f"the total must stay below 1.0 so that I - A is invertible.")
+                f"the total must stay below 1.0 so that I - A is invertible."
+            )
         self.dependencies[key] = dependency
 
     def inherited_fraction(self, dependent_id):
