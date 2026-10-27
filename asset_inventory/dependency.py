@@ -14,8 +14,21 @@ class Dependency:
         self.source_id = source_id
         self.fraction = fraction
 
+    def to_dict(self):
+        """Turn the dependency into a dict that the json module can save."""
+        return {
+            "dependent_id": self.dependent_id,
+            "source_id": self.source_id,
+            "fraction": self.fraction,
+        }
+
     def __str__(self):
         return (
             f"Equipment {self.dependent_id} inherits {self.fraction:.0%} "
             f"of the risk of equipment {self.source_id}"
         )
+
+
+def dependency_from_dict(data):
+    """Rebuild a dependency from a dict read from JSON (the constructor validates it)."""
+    return Dependency(data["dependent_id"], data["source_id"], data["fraction"])
