@@ -9,7 +9,7 @@ Second graded assignment (sprints 3, 4 and 5) for the Cybersecurity course — S
 | # | Requirement | Weight | Status |
 | --- | --- | --- | --- |
 | 1 | Each asset is an object of an equipment class hierarchy | 20% | Done |
-| 2 | Data stored as a JSON array of objects | 20% | Planned |
+| 2 | Data stored as a JSON array of objects | 20% | Done |
 | 3 | Application running in a Docker container for 24 hours | 45% | Planned |
 | 4 | Effective risk of each equipment computed with a linear model | 15% | Done |
 
@@ -28,6 +28,7 @@ Second graded assignment (sprints 3, 4 and 5) for the Cybersecurity course — S
 - Clean exit with `Ctrl+C` or `Ctrl+D`
 - **Dependencies:** register that one equipment inherits a fraction of another equipment's risk, remove and list them
 - **Risk report:** own risk and effective risk of every equipment, highest first, with the condition number of the system
+- **Persistence:** everything is saved to JSON files after each successful change and loaded again when the program starts
 
 ## How to run
 
@@ -42,7 +43,51 @@ pip install -r requirements.txt
 python3 main.py
 ```
 
-Data is kept in memory for now; JSON persistence is the next stage.
+The data is saved in the `data/` folder (created on the first save and ignored by Git). To start from the scenario solved by hand in the [Risk model](#risk-model) section, copy the example files before running:
+
+```bash
+mkdir -p data
+cp examples/*.json data/
+python3 main.py        # option 16 shows x = [8.98, 14.8, 7.45]
+```
+
+To run the tests and the style checks (the same ones the GitHub Actions workflow runs on every push):
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+flake8 .
+black --check .
+```
+
+## Data files
+
+Each file in `data/` is a JSON array of objects. Equipments store their subclass in `"type"`, so the right class is rebuilt when loading, and refer to vulnerabilities by ID instead of copying them:
+
+```json
+[
+  {
+    "type": "Notebook",
+    "id": 1,
+    "name": "E1",
+    "owner": "Lara",
+    "location": "Lab",
+    "description": "hand-solved scenario",
+    "vulnerability_ids": [1]
+  }
+]
+```
+
+| File | Content |
+| --- | --- |
+| `equipments.json` | Equipments, with their type and the IDs of their vulnerabilities |
+| `vulnerabilities.json` | Vulnerabilities, with CVSS and status (`"OPEN"`, `"FIXED"`...) |
+| `dependencies.json` | Dependencies: `dependent_id`, `source_id` and `fraction` (matrix `A`) |
+
+- **Loading goes through the business rules.** Every object is rebuilt and added with the same `Inventory` methods the menu uses, so a file edited by hand with a repeated ID, a CVSS of 12 or a link to a missing vulnerability is refused.
+- **Broken files are reported, never overwritten.** A missing or empty file means an empty list; a malformed file, a file that is not an array or a missing field stops the program with a message naming the file.
+- **Atomic writes.** Each file is written to a temporary `.tmp` file and then swapped in with `os.replace`, so a crash in the middle of a save never leaves a half-written file.
+- **UTF-8.** Files are written with `ensure_ascii=False`, so accented names are stored as they are.
 
 ## Class design
 
@@ -58,7 +103,8 @@ Vulnerability ── Status (Enum)
 
 Inventory ── has many ──> Equipment, Vulnerability, Dependency
 RiskAnalysis ── reads ──> Inventory
-Menu ── uses ──> Inventory, RiskAnalysis
+JsonStorage ── saves and loads ──> Inventory
+Menu ── uses ──> Inventory, RiskAnalysis, JsonStorage
 ```
 
 | Class | File | Responsibility |
@@ -70,14 +116,16 @@ Menu ── uses ──> Inventory, RiskAnalysis
 | `Dependency` | `asset_inventory/dependency.py` | One entry of the dependency matrix: the dependent equipment inherits a fraction of the source equipment's risk |
 | `RiskAnalysis` | `asset_inventory/risk.py` | Builds the matrices with NumPy, checks that the system can be solved and computes own and effective risk |
 | `Menu` | `asset_inventory/menu.py` | The only class that talks to the user (`print` and `input`) |
+| `JsonStorage` | `asset_inventory/storage.py` | Saves the inventory to JSON files and loads it back through the `Inventory` rules (Repository pattern) |
 | — | `asset_inventory/helpers.py` | Input functions: `read_text()`, `read_int()`, `read_float()`, `choose_from_list()`, `ask_yes_no()` |
-| — | `main.py` | Entry point: creates the `Inventory` and the `Menu` |
+| — | `main.py` | Entry point: loads the data, then creates the `Menu` |
 
 ### Object-oriented concepts used
 
 - **Inheritance:** each equipment type is a subclass of `Equipment` and reuses all its attributes and methods
 - **Polymorphism:** every subclass overrides `exposure_factor()`, which weights the equipment's own risk. The menu creates any type through the same call, `equipment_class(...)`
 - **Composition:** `Inventory` *has* equipments, vulnerabilities and dependencies; `Menu` *has* an `Inventory`; `RiskAnalysis` *reads* an `Inventory`
+- **Factory:** `equipment_from_dict()` reads the `"type"` saved in the JSON and creates an object of the matching subclass
 - **Encapsulation of rules:** validation lives in `Inventory` and `Vulnerability`, so it protects the data whatever the source (menu today, JSON file and web API later). The menu validates again while typing only to improve the user experience (defense in depth)
 
 ### Exposure factor by equipment type
@@ -141,7 +189,8 @@ Each stage is developed in its own branch and merged into `main` through a pull 
 | `feature/base`, `feature/assets`, `docs/readme`, `refactor/clean-comments`, `docs/update-after-refactor` | Assignment 1 (see tag `trabalho-1`) |
 | `refactor/oop-models` | Rewrite in object-oriented programming: classes, inheritance, polymorphism and the new menu |
 | `feat/risk-analysis` | Dependencies between equipments and the risk model with NumPy |
-| `feat/json-storage` | JSON persistence *(planned)* |
+| `test/quality-ci` | Tests with pytest, formatting with black, linting with flake8 and the GitHub Actions workflow |
+| `feat/json-storage` | JSON persistence: `to_dict`/`from_dict`, `JsonStorage`, example files and storage tests |
 | `feat/docker` | Dockerfile and container execution *(planned)* |
 
 Sprint 3 study exercises are in the [sprint3](https://github.com/larasoaresm2/sprint3) repository.

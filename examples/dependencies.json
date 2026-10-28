@@ -1,0 +1,17 @@
+[
+  {
+    "dependent_id": 1,
+    "source_id": 2,
+    "fraction": 0.1
+  },
+  {
+    "dependent_id": 3,
+    "source_id": 1,
+    "fraction": 0.5
+  },
+  {
+    "dependent_id": 3,
+    "source_id": 2,
+    "fraction": 0.2
+  }
+]

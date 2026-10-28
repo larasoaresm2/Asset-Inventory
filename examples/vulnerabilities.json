@@ -1,0 +1,23 @@
+[
+  {
+    "id": 1,
+    "description": "V1",
+    "category": "Web",
+    "cvss": 7.5,
+    "status": "OPEN"
+  },
+  {
+    "id": 2,
+    "description": "V2",
+    "category": "Web",
+    "cvss": 5.0,
+    "status": "OPEN"
+  },
+  {
+    "id": 3,
+    "description": "V3",
+    "category": "Web",
+    "cvss": 9.8,
+    "status": "OPEN"
+  }
+]
