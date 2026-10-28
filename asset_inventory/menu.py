@@ -15,48 +15,72 @@ class Menu:
     def __init__(self, inventory, storage=None):
         self.inventory = inventory
         self.storage = storage
-        self.options = {
+        self.equipment_menu = {
             "1": ("Create equipment", self.create_equipment),
             "2": ("List all equipments", self.list_equipments),
             "3": ("Show equipment", self.show_equipment),
             "4": ("Update equipment", self.update_equipment),
             "5": ("Delete equipment", self.delete_equipment),
-            "6": ("Create vulnerability", self.create_vulnerability),
-            "7": ("List all vulnerabilities", self.list_vulnerabilities),
-            "8": ("Link vulnerability to equipment", self.link_vulnerability),
-            "9": ("Unlink vulnerability from equipment", self.unlink_vulnerability),
-            "10": ("List vulnerabilities of equipment", self.list_vulnerabilities_of),
-            "11": ("Update vulnerability", self.update_vulnerability),
-            "12": ("Delete vulnerability", self.delete_vulnerability),
-            "13": ("Add dependency between equipments", self.add_dependency),
-            "14": ("Remove dependency", self.remove_dependency),
-            "15": ("List dependencies", self.list_dependencies),
-            "16": ("Risk report", self.risk_report),
+        }
+        self.vulnerability_menu = {
+            "1": ("Create vulnerability", self.create_vulnerability),
+            "2": ("List all vulnerabilities", self.list_vulnerabilities),
+            "3": ("Update vulnerability", self.update_vulnerability),
+            "4": ("Delete vulnerability", self.delete_vulnerability),
+        }
+        self.link_menu = {
+            "1": ("Link vulnerability to equipment", self.link_vulnerability),
+            "2": ("Unlink vulnerability from equipment", self.unlink_vulnerability),
+            "3": ("List vulnerabilities of an equipment", self.list_vulnerabilities_of),
+        }
+        self.dependency_menu = {
+            "1": ("Add dependency between equipments", self.add_dependency),
+            "2": ("Remove dependency", self.remove_dependency),
+            "3": ("List dependencies", self.list_dependencies),
+        }
+        # An option leads either to a submenu (a dict) or to an action (a method)
+        self.main_menu = {
+            "1": ("Equipments", self.equipment_menu),
+            "2": ("Vulnerabilities", self.vulnerability_menu),
+            "3": ("Links", self.link_menu),
+            "4": ("Dependencies", self.dependency_menu),
+            "5": ("Risk report", self.risk_report),
         }
 
     def run(self):
+        self._show_menu("IT ASSET MANAGER", self.main_menu, "Exit")
+        print("Goodbye!")
+
+    def _show_menu(self, title, options, exit_label):
+        """Show a menu until the user types 0. Works for the main menu and every submenu."""
         while True:
-            print("\n==== IT ASSET MANAGER ====")
-            for key, (label, _) in self.options.items():
+            print(f"\n==== {title} ====")
+            for key, (label, _) in options.items():
                 print(f"{key} - {label}")
-            print("0 - Exit")
+            print(f"0 - {exit_label}")
 
             choice = input("Choose an option: ").strip()
             if choice == "0":
-                print("Goodbye!")
-                break
-            if choice not in self.options:
+                return
+            if choice not in options:
                 print("Invalid option. Please choose a valid option.")
                 continue
 
-            _, action = self.options[choice]
-            try:
-                action()
-            except ValueError as error:
-                print(f"Error: {error}")
-                continue
-            if self.storage is not None:
-                self.storage.save(self.inventory)
+            label, target = options[choice]
+            if isinstance(target, dict):
+                self._show_menu(label.upper(), target, "Back")
+            else:
+                self._run_action(target)
+
+    def _run_action(self, action):
+        """Run one action; save only if it worked."""
+        try:
+            action()
+        except ValueError as error:
+            print(f"Error: {error}")
+            return
+        if self.storage is not None:
+            self.storage.save(self.inventory)
 
     # Small helpers
     def _choose_equipment_type(self):
