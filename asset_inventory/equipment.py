@@ -24,12 +24,6 @@ class Equipment:
         if vulnerability_id in self.vulnerability_ids:
             self.vulnerability_ids.remove(vulnerability_id)
 
-    def __str__(self):
-        return (
-            f"[{self.id}] {self.name} ({type(self).__name__}) | "
-            f"owner: {self.owner} | location: {self.location}"
-        )
-
     def to_dict(self):
         """Turn the equipment into a dict that the json module can save."""
         return {
@@ -41,6 +35,12 @@ class Equipment:
             "description": self.description,
             "vulnerability_ids": list(self.vulnerability_ids),
         }
+
+    def __str__(self):
+        return (
+            f"[{self.id}] {self.name} ({type(self).__name__}) | "
+            f"owner: {self.owner} | location: {self.location}"
+        )
 
 
 class Server(Equipment):
@@ -68,6 +68,7 @@ class Database(Equipment):
         return 0.8
 
 
+# Factory: the "type" saved in the JSON says which class to rebuild
 EQUIPMENT_CLASSES = {
     "Equipment": Equipment,
     "Server": Server,
