@@ -12,8 +12,9 @@ EQUIPMENT_TYPES = [Server, Notebook, Router, WebApplication, Database]
 class Menu:
     """text interface: the only class that talks to the user (print/input)."""
 
-    def __init__(self, inventory):
+    def __init__(self, inventory, storage=None):
         self.inventory = inventory
+        self.storage = storage
         self.options = {
             "1": ("Create equipment", self.create_equipment),
             "2": ("List all equipments", self.list_equipments),
@@ -53,6 +54,9 @@ class Menu:
                 action()
             except ValueError as error:
                 print(f"Error: {error}")
+                continue
+            if self.storage is not None:
+                self.storage.save(self.inventory)
 
     # Small helpers
     def _choose_equipment_type(self):
