@@ -1,9 +1,9 @@
-   .git
-   .github
-   .venv
-   __pycache__
-   .pytest_cache
-   .coverage
-   data
-   tests
-   examples
+.git
+.github
+.venv
+__pycache__
+.pytest_cache
+.coverage
+data
+tests
+examples
