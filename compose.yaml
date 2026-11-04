@@ -1,0 +1,16 @@
+services:
+  asset-inventory:
+    build: .
+    image: asset-inventory
+    container_name: trab_02_12621CBS221
+    # The menu waits for keyboard input: keep stdin open and give it a terminal (like docker run -it)
+    stdin_open: true
+    tty: true
+    # Bring the container back if the program ends or the server reboots,
+    # unless someone stopped it on purpose
+    restart: unless-stopped
+    volumes:
+      - asset-data:/app/data
+
+volumes:
+  asset-data:
