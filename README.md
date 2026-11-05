@@ -10,7 +10,7 @@ Second graded assignment (sprints 3, 4 and 5) for the Cybersecurity course — S
 | --- | --- | --- | --- |
 | 1 | Each asset is an object of an equipment class hierarchy | 20% | Done |
 | 2 | Data stored as a JSON array of objects | 20% | Done |
-| 3 | Application running in a Docker container for 24 hours | 45% | Planned |
+| 3 | Application running in a Docker container for 24 hours | 45% | In progress: container ready and tested locally; 24-hour run on the course server pending |
 | 4 | Effective risk of each equipment computed with a linear model | 15% | Done |
 
 ## Features
@@ -29,6 +29,8 @@ Second graded assignment (sprints 3, 4 and 5) for the Cybersecurity course — S
 - **Dependencies:** register that one equipment inherits a fraction of another equipment's risk, remove and list them
 - **Risk report:** own risk and effective risk of every equipment, highest first, with the condition number of the system
 - **Persistence:** everything is saved to JSON files after each successful change and loaded again when the program starts
+- **Menu organized in submenus:** Equipments, Vulnerabilities, Links, Dependencies and Risk report
+- **Logging:** every operation is recorded in `data/app.log` with time, level and origin
 
 ## How to run
 
@@ -59,6 +61,70 @@ pytest
 flake8 .
 black --check .
 ```
+
+## Run with Docker
+
+Requirement: Docker with the Compose plugin (Docker Desktop on macOS or Windows, Docker Engine on Linux).
+
+```bash
+git clone https://github.com/larasoaresm2/Asset-Inventory.git
+cd Asset-Inventory
+docker compose up -d --build     # build the image and start the container in the background
+docker compose ps                # after about a minute the status shows (healthy)
+```
+
+The container is named `trab_02_12621CBS221`. The menu runs inside it and waits for input:
+
+```bash
+docker compose attach asset-inventory    # press Enter to show the menu
+```
+
+To leave the menu **without stopping the program**, press `Ctrl+P` and then `Ctrl+Q` (in the VS Code terminal, which captures `Ctrl+P`, use `docker compose attach --detach-keys="ctrl-x" asset-inventory` and leave with `Ctrl+X`).
+
+| Task | Command |
+| --- | --- |
+| See the application log | `docker compose exec asset-inventory tail -n 20 data/app.log` |
+| See what the menu printed | `docker compose logs --tail 20` |
+| Update after a `git pull` | `docker compose up -d --build` |
+| Stop on purpose | `docker compose stop` |
+| Remove the container (data is kept) | `docker compose down` |
+
+**Never run `docker compose down -v`:** the `-v` also deletes the volume, and with it all the data.
+
+### How the container is built
+
+| Decision | Where | Why |
+| --- | --- | --- |
+| `python:3.12-slim` base image | `Dockerfile` | Smaller image and fewer installed programs, so less attack surface |
+| `requirements.txt` copied and installed before the code | `Dockerfile` | Layer cache: changing the code does not reinstall NumPy |
+| NumPy version pinned | `requirements.txt` | Every build, here or on the server, gets the same library |
+| Runs as `appuser`, not `root` | `Dockerfile` | Least privilege: the container shares the host kernel, so an exploited program must not be root |
+| `HEALTHCHECK` | `Dockerfile` | Every minute Docker checks that the saved data still loads through the `Inventory` rules; the status shows as `healthy` or `unhealthy` |
+| `.dockerignore` | `.dockerignore` | Keeps `data`, `.git`, `.venv` and test files out of the image |
+| Named volume `asset-data` mounted at `/app/data` | `compose.yaml` | The JSON files and the log survive when the container is removed or rebuilt |
+| `stdin_open` and `tty` | `compose.yaml` | Keep the interactive menu waiting for input instead of exiting |
+| `restart: unless-stopped` | `compose.yaml` | If the program ends or the server reboots, Docker starts it again, unless someone stopped it on purpose |
+| Docker log rotation (3 × 1 MB) | `compose.yaml` | The screen output kept by Docker never fills the disk |
+| `LOG_LEVEL` variable | `compose.yaml` | Log level set from the environment or a `.env` file (default `INFO`) |
+
+Tested locally: the container stays `healthy`; choosing *Exit* in the menu makes Docker restart it (`RestartCount` 1); after `docker compose down` and `up`, the registered equipments are still there.
+
+## Logging
+
+The application writes to `data/app.log` (inside the volume, so it survives the container):
+
+```
+2026-11-05T22:42:56Z INFO main: Application started
+2026-11-05T22:42:56Z INFO main: Loaded 1 equipments, 0 vulnerabilities and 0 dependencies
+2026-11-05T22:43:52Z INFO asset_inventory.menu: list_equipments done
+2026-11-05T22:44:06Z WARNING asset_inventory.menu: show_equipment refused: Equipment not found.
+```
+
+- **Levels:** `INFO` for operations that worked, `WARNING` for operations refused by the rules, `ERROR` when the saved data cannot be loaded, and the full traceback for unexpected errors
+- **Times in UTC** (the `Z`), the usual choice on servers
+- **Rotation:** the file is rotated at 1 MB and three old files are kept
+- **No personal data:** the log records counts and operation names, never owners or other personal fields (LGPD)
+- Every start and stop is logged, so automatic restarts and the 24-hour run can be checked in the log
 
 ## Data files
 
@@ -118,7 +184,8 @@ Menu ── uses ──> Inventory, RiskAnalysis, JsonStorage
 | `Menu` | `asset_inventory/menu.py` | The only class that talks to the user (`print` and `input`) |
 | `JsonStorage` | `asset_inventory/storage.py` | Saves the inventory to JSON files and loads it back through the `Inventory` rules (Repository pattern) |
 | — | `asset_inventory/helpers.py` | Input functions: `read_text()`, `read_int()`, `read_float()`, `choose_from_list()`, `ask_yes_no()` |
-| — | `main.py` | Entry point: loads the data, then creates the `Menu` |
+| — | `asset_inventory/log_config.py` | `setup_logging()`: rotating log file in `data/app.log` |
+| — | `main.py` | Entry point: sets up logging, loads the data, then creates the `Menu` |
 
 ### Object-oriented concepts used
 
@@ -191,7 +258,8 @@ Each stage is developed in its own branch and merged into `main` through a pull 
 | `feat/risk-analysis` | Dependencies between equipments and the risk model with NumPy |
 | `test/quality-ci` | Tests with pytest, formatting with black, linting with flake8 and the GitHub Actions workflow |
 | `feat/json-storage` | JSON persistence: `to_dict`/`from_dict`, `JsonStorage`, example files and storage tests |
-| `feat/docker` | Dockerfile and container execution *(planned)* |
+| `refactor/menu-submenus` | Main menu with submenus and one generic menu loop |
+| `feat/docker` | Dockerfile, `.dockerignore`, `compose.yaml`, pinned dependencies and logging |
 
 Sprint 3 study exercises are in the [sprint3](https://github.com/larasoaresm2/sprint3) repository.
 
