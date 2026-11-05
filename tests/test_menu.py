@@ -52,3 +52,11 @@ def test_failed_action_is_not_saved(monkeypatch, tmp_path):
     type_answers(monkeypatch, ["1", "3", "99", "0", "0"])  # show equipment 99, which does not exist
     Menu(Inventory(), storage).run()
     assert not (tmp_path / "data").exists()
+
+
+def test_actions_are_logged(monkeypatch, caplog):
+    type_answers(monkeypatch, ["1", "2", "3", "99", "0", "0"])  # list, then show a missing one
+    with caplog.at_level("INFO"):
+        Menu(Inventory()).run()
+    assert "list_equipments done" in caplog.text
+    assert "show_equipment refused: Equipment not found." in caplog.text

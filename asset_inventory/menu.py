@@ -1,9 +1,13 @@
+import logging
+
 from asset_inventory.enums import Status
 from asset_inventory.equipment import Database, Notebook, Router, Server, WebApplication
 from asset_inventory.helpers import ask_yes_no, choose_from_list, read_float, read_int, read_text
 from asset_inventory.vulnerability import Vulnerability
 from asset_inventory.dependency import Dependency
 from asset_inventory.risk import RiskAnalysis
+
+logger = logging.getLogger(__name__)
 
 # The classes themselves, in order shown to the user
 EQUIPMENT_TYPES = [Server, Notebook, Router, WebApplication, Database]
@@ -78,7 +82,9 @@ class Menu:
             action()
         except ValueError as error:
             print(f"Error: {error}")
+            logger.warning("%s refused: %s", action.__name__, error)
             return
+        logger.info("%s done", action.__name__)
         if self.storage is not None:
             self.storage.save(self.inventory)
 

@@ -9,6 +9,14 @@ services:
     # Bring the container back if the program ends or the server reboots,
     # unless someone stopped it on purpose
     restart: unless-stopped
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    # Rotate the screen output kept by Docker (docker compose logs)
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "3"
     volumes:
       - asset-data:/app/data
 
