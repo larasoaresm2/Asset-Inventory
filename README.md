@@ -10,7 +10,7 @@ Second graded assignment (sprints 3, 4 and 5) for the Cybersecurity course — S
 | --- | --- | --- | --- |
 | 1 | Each asset is an object of an equipment class hierarchy | 20% | Done |
 | 2 | Data stored as a JSON array of objects | 20% | Done |
-| 3 | Application running in a Docker container for 24 hours | 45% | In progress: container ready and tested locally; 24-hour run on the course server pending |
+| 3 | Application running in a Docker container for 24 hours | 45% | Done: ran for 24 hours on the course server (see [Deployment](#deployment-on-the-course-server)) |
 | 4 | Effective risk of each equipment computed with a linear model | 15% | Done |
 
 ## Features
@@ -108,6 +108,54 @@ To leave the menu **without stopping the program**, press `Ctrl+P` and then `Ctr
 | `LOG_LEVEL` variable | `compose.yaml` | Log level set from the environment or a `.env` file (default `INFO`) |
 
 Tested locally: the container stays `healthy`; choosing *Exit* in the menu makes Docker restart it (`RestartCount` 1); after `docker compose down` and `up`, the registered equipments are still there.
+
+## Deployment on the course server
+
+The course server is a virtual machine (KVM) provided by the university: Ubuntu 26.04 LTS, reachable only from the university network at a private IP address and shared by the whole class. Docker 29 and Docker Compose 2.40 were already installed, running and enabled at boot.
+
+### Steps
+
+1. **SSH key instead of password.** A key pair was generated on the laptop (`ssh-keygen -t ed25519`), the public key was copied to the server (`ssh-copy-id`), and an alias in `~/.ssh/config` makes the connection `ssh ufu`. The default password was changed on the first login.
+2. **Docker without `sudo`.** The user was added to the `docker` group (`sudo usermod -aG docker $USER`). Members of this group can control the whole machine through Docker, so it is as sensitive as `sudo`; the user already had `sudo`, so no privilege was added.
+3. **Clone into a folder named after the student ID**, so that the Compose project, volume and network names are unique on a shared server:
+
+   ```bash
+   git clone https://github.com/larasoaresm2/Asset-Inventory.git ~/trab_02_12621CBS221
+   cd ~/trab_02_12621CBS221
+   docker compose up -d --build
+   ```
+
+4. **Restart test without disturbing other users.** Rebooting the server or changing its firewall would affect the whole class, so only this container was restarted (`docker compose restart`). Surviving a server reboot is guaranteed by Docker being enabled at boot and by `restart: unless-stopped`.
+5. **Firewall.** `ufw` is inactive on the server and was not changed, because it is shared. If it were enabled, only port 22 (SSH) would need to be open: the application does not listen on any port.
+
+### 24-hour run
+
+The container started on 2026-11-05 at 23:59:41 UTC (20:59 in Brasília) and was checked on 2026-11-06 at 21:21 (Brasília):
+
+```
+$ docker compose ps
+NAME                  IMAGE             COMMAND            SERVICE           CREATED        STATUS                  PORTS
+trab_02_12621CBS221   asset-inventory   "python main.py"   asset-inventory   24 hours ago   Up 24 hours (healthy)
+
+$ docker inspect --format "{{.State.StartedAt}} restarts={{.RestartCount}}" trab_02_12621CBS221
+2026-11-05T23:59:41.124911768Z restarts=0
+
+$ docker compose exec asset-inventory grep -c "Application started" data/app.log
+2
+```
+
+- **Up 24 hours (healthy)** with **0 restarts**: the program ran without interruption and the data loaded correctly at every health check
+- The two starts in the log are the first `up` and the manual restart test, both before the 24 hours began
+- The complete log of the run is in [`docs/evidence/app-24h.log`](docs/evidence/app-24h.log)
+
+To bring the application up again on the server (for example, on the day of the presentation):
+
+```bash
+ssh ufu
+cd ~/trab_02_12621CBS221
+git pull
+docker compose up -d --build
+```
 
 ## Logging
 
